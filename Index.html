@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Cloud Document Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed top-5 right-5 z-50 hidden max-w-sm px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all"></div>
+
+  <!-- ========================================== -->
+  <!-- VIEW 1: HALAMAN LOGIN                      -->
+  <!-- ========================================== -->
+  <div id="loginView" class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
+      <div class="mb-6">
+        <span class="inline-block px-2.5 py-1 text-xs font-semibold tracking-wide text-blue-700 bg-blue-50 rounded-full mb-3">
+          Serverless Cloud Storage
+        </span>
+        <h1 class="text-2xl font-bold text-slate-900">Cloud Document Portal</h1>
+        <p class="text-sm text-slate-500 mt-1">Portal administrasi, pengarsipan otomatis, dan verifikasi berkas Ormawa.</p>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
+          <input type="text" id="loginUsername" required placeholder="Masukkan username"
+            class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+          <input type="password" id="loginPassword" required placeholder="••••••••"
+            class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button type="submit" id="btnLogin"
+          class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 rounded-lg text-sm transition cursor-pointer">
+          Masuk ke Portal
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- VIEW 2: DASHBOARD UTAMA (USER & ADMIN)     -->
+  <!-- ========================================== -->
+  <div id="appView" class="hidden min-h-screen flex flex-col">
+    <!-- NAVBAR -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-sm">CD</div>
+          <div>
+            <h1 class="text-sm font-bold text-slate-900 leading-tight">Cloud Document Portal</h1>
+            <p class="text-xs text-slate-500">Auto-Organizer Ormawa & Cloud Verification</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <div class="text-right hidden sm:block">
+            <p id="navUserName" class="text-sm font-semibold text-slate-800">-</p>
+            <p id="navUserRole" class="text-xs text-slate-500">-</p>
+          </div>
+          <button onclick="handleLogout()"
+            class="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition cursor-pointer">
+            Keluar
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6 flex-1">
+
+      <!-- RINGKASAN STATUS & MONITORING RESOURCE CLOUD -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <p class="text-xs font-medium text-slate-500">Total Dokumen</p>
+          <p id="statTotal" class="text-2xl font-bold text-slate-900 mt-1">0</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <p class="text-xs font-medium text-slate-500">Menunggu Verifikasi</p>
+          <p id="statPending" class="text-2xl font-bold text-amber-600 mt-1">0</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <p class="text-xs font-medium text-slate-500">Disetujui (Approved)</p>
+          <p id="statApproved" class="text-2xl font-bold text-emerald-600 mt-1">0</p>
+        </div>
+        <div id="cardQuota" class="bg-white border border-slate-200 rounded-xl p-4">
+          <p id="cardQuotaLabel" class="text-xs font-medium text-slate-500">Perlu Revisi</p>
+          <p id="cardQuotaValue" class="text-2xl font-bold text-rose-600 mt-1">0</p>
+        </div>
+      </div>
+
+      <!-- FORM UPLOAD (KHUSUS ROLE USER) -->
+      <section id="uploadSection" class="hidden bg-white border border-slate-200 rounded-xl p-6">
+        <div class="mb-4">
+          <h2 class="text-base font-bold text-slate-900">Unggah Dokumen Ormawa</h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            File otomatis diganti namanya menjadi <code class="bg-slate-100 px-1 rounded">[ORMAWA]_[JENIS]_[PROKER]_[TANGGAL]</code> dan dipetakan ke folder Google Drive sesuai Ormawa Anda.
+          </p>
+        </div>
+
+        <form id="uploadForm" onsubmit="handleUpload(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Ormawa (Otomatis dari Akun)</label>
+            <input type="text" id="uploadDivisi" readonly
+              class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-600 cursor-not-allowed">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Jenis Berkas</label>
+            <select id="uploadJenis" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="Proposal">Proposal</option>
+              <option value="LPJ">LPJ</option>
+              <option value="Surat_Izin">Surat Izin</option>
+              <option value="Laporan_Keuangan">Laporan Keuangan</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Nama Kegiatan / Proker</label>
+            <input type="text" id="uploadKegiatan" required placeholder="Contoh: Softskill Improvement 2026"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Pilih File (PDF, Office, JPG/PNG • Maks. 5 MB)</label>
+            <input type="file" id="uploadFile" required accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
+              class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer border border-slate-300 rounded-lg">
+          </div>
+
+          <div class="md:col-span-2 flex justify-end">
+            <button type="submit" id="btnUpload"
+              class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition cursor-pointer">
+              Unggah ke Cloud
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- TABEL DAFTAR DOKUMEN -->
+      <section class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div class="p-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div>
+            <h2 id="tableTitle" class="text-base font-bold text-slate-900">Daftar Dokumen</h2>
+            <p class="text-xs text-slate-500">Data tersinkronisasi langsung dengan Cloud Database & Drive.</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="text" id="filterSearch" oninput="renderTable()" placeholder="Cari proker / file / pengirim..."
+              class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select id="filterOrmawa" onchange="renderTable()"
+              class="hidden px-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Semua Ormawa</option>
+            </select>
+            <select id="filterStatus" onchange="renderTable()"
+              class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Semua Status</option>
+              <option value="Pending">Pending</option>
+              <option value="Approved">Approved</option>
+              <option value="Revisi">Revisi</option>
+            </select>
+            <button onclick="loadDocuments()"
+              class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition cursor-pointer">
+              Refresh
+            </button>
+            <button id="btnOpenManageUsers" onclick="openManageUsersModal()"
+              class="hidden px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium rounded-lg transition cursor-pointer">
+              Kelola Akun
+            </button>
+            <button id="btnOpenAddUser" onclick="openAddUserModal()"
+              class="hidden px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg transition cursor-pointer">
+              + Tambah Akun Ormawa
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
+                <th class="py-3 px-4 font-semibold">Waktu & ID</th>
+                <th class="py-3 px-4 font-semibold">Pengirim & Ormawa</th>
+                <th class="py-3 px-4 font-semibold">Kegiatan & File Cloud</th>
+                <th class="py-3 px-4 font-semibold">Status & Catatan</th>
+                <th class="py-3 px-4 font-semibold text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="docTableBody" class="divide-y divide-slate-100 text-sm">
+              <tr>
+                <td colspan="5" class="py-8 text-center text-slate-400 text-xs">Memuat data dari cloud...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL 1: VERIFIKASI ADMIN                  -->
+  <!-- ========================================== -->
+  <div id="verifyModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center p-4 z-40">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+      <h3 class="text-lg font-bold text-slate-900">Verifikasi Dokumen</h3>
+      <p id="modalDocName" class="text-xs text-slate-500 mt-1 break-all"></p>
+
+      <form id="verifyForm" onsubmit="handleVerifySubmit(event)" class="mt-4 space-y-4">
+        <input type="hidden" id="modalDocId">
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Keputusan Status</label>
+          <select id="modalStatus" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+            <option value="Approved">Approved (Disetujui)</option>
+            <option value="Revisi">Revisi (Perlu Perbaikan)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Catatan Admin (Dikirim ke Email Ormawa)</label>
+          <textarea id="modalCatatan" rows="3" placeholder="Contoh: Format sudah sesuai / Tolong perbaiki halaman 2."
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('verifyModal')"
+            class="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer">
+            Batal
+          </button>
+          <button type="submit" id="btnVerifySubmit"
+            class="px-4 py-2 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg cursor-pointer">
+            Simpan & Kirim Email
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL 2: UPLOAD REVISI (KHUSUS USER)       -->
+  <!-- ========================================== -->
+  <div id="reviseModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center p-4 z-40">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+      <h3 class="text-lg font-bold text-slate-900">Unggah File Revisi</h3>
+      <p id="reviseDocInfo" class="text-xs text-slate-500 mt-1"></p>
+
+      <div class="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+        <p class="text-[11px] font-semibold text-rose-700 uppercase">Catatan Revisi Admin:</p>
+        <p id="reviseAdminNote" class="text-xs text-rose-800 mt-0.5">-</p>
+      </div>
+
+      <form id="reviseForm" onsubmit="handleReviseSubmit(event)" class="mt-4 space-y-4">
+        <input type="hidden" id="reviseDocId">
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Pilih File Perbaikan (PDF, Office, JPG/PNG • Maks. 5 MB)</label>
+          <input type="file" id="reviseFile" required accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
+            class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer border border-slate-300 rounded-lg">
+          <p class="text-[11px] text-slate-400 mt-1">File lama di Cloud Drive otomatis dihapus dan digantikan file baru ini.</p>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('reviseModal')"
+            class="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer">
+            Batal
+          </button>
+          <button type="submit" id="btnReviseSubmit"
+            class="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg cursor-pointer">
+            Kirim Revisi
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL 3: TAMBAH AKUN ORMAWA (KHUSUS ADMIN) -->
+  <!-- ========================================== -->
+  <div id="addUserModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center p-4 z-40">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+      <h3 class="text-lg font-bold text-slate-900">Daftarkan Akun Ormawa</h3>
+      <p class="text-xs text-slate-500 mt-1">Nama Ormawa otomatis dinormalisasi ke huruf kapital untuk konsistensi folder Drive.</p>
+
+      <form id="addUserForm" onsubmit="handleCreateUser(event)" class="mt-4 space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Nama Pengurus / PIC</label>
+          <input type="text" id="newNama" required placeholder="Contoh: Budi Santoso"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Username</label>
+            <input type="text" id="newUsername" required placeholder="misal: himasi"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Password</label>
+            <input type="password" id="newPassword" required minlength="4" placeholder="Min. 4 karakter"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Email Aktif (Untuk Notifikasi)</label>
+          <input type="email" id="newEmail" required placeholder="ormawa@gmail.com"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Nama Ormawa</label>
+            <input type="text" id="newDivisi" list="ormawaList" required placeholder="Pilih / ketik Ormawa"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <datalist id="ormawaList">
+              <option value="BEM FASILKOM">
+              <option value="BLM FASILKOM">
+              <option value="HIMSIKA">
+              <option value="HIMTIKA">
+              <option value="UKM">
+              <option value="KEMAHASISWAAN">
+            </datalist>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Role</label>
+            <select id="newRole" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+              <option value="User">User (Ormawa)</option>
+              <option value="Admin">Admin</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3">
+          <button type="button" onclick="closeModal('addUserModal')"
+            class="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer">
+            Batal
+          </button>
+          <button type="submit" id="btnAddUserSubmit"
+            class="px-4 py-2 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg cursor-pointer">
+            Simpan Akun
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL 4: KELOLA DAFTAR AKUN (KHUSUS ADMIN) -->
+  <!-- ========================================== -->
+  <div id="manageUsersModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center p-4 z-40">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Daftar Akun Terdaftar</h3>
+          <p class="text-xs text-slate-500">Kelola akun Ormawa dan Admin yang memiliki akses ke portal.</p>
+        </div>
+        <button onclick="closeModal('manageUsersModal')" class="text-slate-400 hover:text-slate-700 text-sm font-bold px-2 py-1 cursor-pointer">✕</button>
+      </div>
+
+      <div class="overflow-y-auto mt-4 flex-1">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
+              <th class="py-2.5 px-3 font-semibold">Username & Nama</th>
+              <th class="py-2.5 px-3 font-semibold">Ormawa & Role</th>
+              <th class="py-2.5 px-3 font-semibold">Email</th>
+              <th class="py-2.5 px-3 font-semibold text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="userListBody" class="divide-y divide-slate-100 text-xs">
+            <tr><td colspan="4" class="py-6 text-center text-slate-400">Memuat daftar akun...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let allDocuments = [];
+
+    function saveSession(user) {
+      try { localStorage.setItem('cdp_user', JSON.stringify(user)); } catch (e) {}
+    }
+    function getSession() {
+      try {
+        const raw = localStorage.getItem('cdp_user');
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+    function clearSession() {
+      try { localStorage.removeItem('cdp_user'); } catch (e) {}
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'fixed top-5 right-5 z-50 max-w-sm px-4 py-3 rounded-lg shadow-lg text-sm font-medium ' +
+        (type === 'error' ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white');
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 4000);
+    }
+
+    function openModal(id) {
+      const el = document.getElementById(id);
+      el.classList.remove('hidden');
+      el.classList.add('flex');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      el.classList.add('hidden');
+      el.classList.remove('flex');
+    }
+
+    window.onload = function() {
+      const saved = getSession();
+      if (saved) {
+        currentUser = saved;
+        initDashboard();
+      }
+    };
+
+    // ==========================================
+    // 1. LOGIN & LOGOUT
+    // ==========================================
+    function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('btnLogin');
+
+      btn.disabled = true;
+      btn.textContent = 'Memverifikasi di Cloud...';
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          btn.textContent = 'Masuk ke Portal';
+          if (res.success) {
+            currentUser = res.user;
+            saveSession(currentUser);
+            showToast('Login berhasil sebagai ' + currentUser.role);
+            initDashboard();
+          } else {
+            showToast(res.message, 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Masuk ke Portal';
+          showToast('Koneksi gagal: ' + err.message, 'error');
+        })
+        .loginUser(username, password);
+    }
+
+    function handleLogout() {
+      currentUser = null;
+      allDocuments = [];
+      clearSession();
+      document.getElementById('appView').classList.add('hidden');
+      document.getElementById('loginView').classList.remove('hidden');
+      document.getElementById('loginForm').reset();
+    }
+
+    function initDashboard() {
+      document.getElementById('loginView').classList.add('hidden');
+      document.getElementById('appView').classList.remove('hidden');
+
+      document.getElementById('navUserName').textContent = currentUser.nama;
+      document.getElementById('navUserRole').textContent = `${currentUser.role} • ${currentUser.divisi}`;
+
+      if (currentUser.role === 'User') {
+        document.getElementById('uploadSection').classList.remove('hidden');
+        document.getElementById('btnOpenAddUser').classList.add('hidden');
+        document.getElementById('btnOpenManageUsers').classList.add('hidden');
+        document.getElementById('filterOrmawa').classList.add('hidden');
+        document.getElementById('uploadDivisi').value = currentUser.divisi;
+        document.getElementById('tableTitle').textContent = `Riwayat Dokumen ${currentUser.divisi}`;
+      } else {
+        document.getElementById('uploadSection').classList.add('hidden');
+        document.getElementById('btnOpenAddUser').classList.remove('hidden');
+        document.getElementById('btnOpenManageUsers').classList.remove('hidden');
+        document.getElementById('filterOrmawa').classList.remove('hidden');
+        document.getElementById('tableTitle').textContent = 'Semua Dokumen Ormawa (Panel Admin)';
+      }
+
+      loadDocuments();
+    }
+
+    // ==========================================
+    // 2. MUAT & RENDER DATA DOKUMEN
+    // ==========================================
+    function loadDocuments() {
+      const tbody = document.getElementById('docTableBody');
+      tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs">Menyinkronkan data dari Cloud Database...</td></tr>';
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success) {
+            allDocuments = res.documents || [];
+            updateStats(res.emailQuota);
+            populateOrmawaFilter();
+            renderTable();
+          } else {
+            showToast(res.message, 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          showToast('Gagal memuat data: ' + err.message, 'error');
+        })
+        .getDocuments(currentUser.userId, currentUser.role);
+    }
+
+    function populateOrmawaFilter() {
+      if (currentUser.role !== 'Admin') return;
+      const select = document.getElementById('filterOrmawa');
+      const currentVal = select.value;
+      const uniqueOrmawa = [...new Set(allDocuments.map(d => d.divisi).filter(Boolean))].sort();
+
+      select.innerHTML = '<option value="">Semua Ormawa</option>' +
+        uniqueOrmawa.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
+      select.value = uniqueOrmawa.includes(currentVal) ? currentVal : '';
+    }
+
+    function updateStats(emailQuota) {
+      const total = allDocuments.length;
+      const pending = allDocuments.filter(d => d.status === 'Pending').length;
+      const approved = allDocuments.filter(d => d.status === 'Approved').length;
+      const revisi = allDocuments.filter(d => d.status === 'Revisi').length;
+
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statPending').textContent = pending;
+      document.getElementById('statApproved').textContent = approved;
+
+      if (currentUser.role === 'Admin' && emailQuota !== null) {
+        document.getElementById('cardQuotaLabel').textContent = 'Sisa Kuota Email Cloud / Hari';
+        document.getElementById('cardQuotaValue').textContent = emailQuota;
+        document.getElementById('cardQuotaValue').className = 'text-2xl font-bold text-blue-600 mt-1';
+      } else {
+        document.getElementById('cardQuotaLabel').textContent = 'Perlu Revisi';
+        document.getElementById('cardQuotaValue').textContent = revisi;
+        document.getElementById('cardQuotaValue').className = 'text-2xl font-bold text-rose-600 mt-1';
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('docTableBody');
+      const keyword = document.getElementById('filterSearch').value.toLowerCase();
+      const statusFilter = document.getElementById('filterStatus').value;
+      const ormawaFilter = document.getElementById('filterOrmawa').value;
+
+      const filtered = allDocuments.filter(d => {
+        const matchStatus = !statusFilter || d.status === statusFilter;
+        const matchOrmawa = !ormawaFilter || d.divisi === ormawaFilter;
+        const matchText = !keyword ||
+          d.namaKegiatan.toLowerCase().includes(keyword) ||
+          d.namaFileCloud.toLowerCase().includes(keyword) ||
+          d.namaPengirim.toLowerCase().includes(keyword) ||
+          d.divisi.toLowerCase().includes(keyword) ||
+          d.docId.toLowerCase().includes(keyword);
+        return matchStatus && matchOrmawa && matchText;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs">Belum ada dokumen yang sesuai.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(d => {
+        const badgeClass = d.status === 'Approved'
+          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : d.status === 'Revisi'
+            ? 'bg-rose-50 text-rose-700 border-rose-200'
+            : 'bg-amber-50 text-amber-700 border-amber-200';
+
+        let actionBtns = `
+          <a href="${escapeHtml(d.fileUrl)}" target="_blank" rel="noopener noreferrer"
+            class="inline-block px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md">
+            Lihat File
+          </a>`;
+
+        if (currentUser.role === 'Admin') {
+          actionBtns += `
+            <button onclick="openVerifyModal('${escapeHtml(d.docId)}')"
+              class="px-2.5 py-1 text-xs font-medium bg-slate-900 hover:bg-slate-700 text-white rounded-md cursor-pointer">
+              Verifikasi
+            </button>
+            <button onclick="handleDeleteDoc('${escapeHtml(d.docId)}')"
+              class="px-2.5 py-1 text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-md cursor-pointer">
+              Hapus
+            </button>`;
+        } else {
+          if (d.status === 'Revisi') {
+            actionBtns += `
+              <button onclick="openReviseModal('${escapeHtml(d.docId)}')"
+                class="px-2.5 py-1 text-xs font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-md cursor-pointer">
+                Upload Revisi
+              </button>`;
+          }
+          if (d.status === 'Pending') {
+            actionBtns += `
+              <button onclick="handleDeleteDoc('${escapeHtml(d.docId)}')"
+                class="px-2.5 py-1 text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-md cursor-pointer">
+                Hapus
+              </button>`;
+          }
+        }
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="py-3.5 px-4 align-top">
+              <div class="font-mono text-xs font-semibold text-slate-700">${escapeHtml(d.docId)}</div>
+              <div class="text-xs text-slate-400 mt-0.5">${escapeHtml(d.timestamp)}</div>
+            </td>
+            <td class="py-3.5 px-4 align-top">
+              <div class="text-xs font-semibold text-slate-800">${escapeHtml(d.namaPengirim)}</div>
+              <div class="text-xs text-slate-500 mt-0.5">${escapeHtml(d.divisi)} • ${escapeHtml(d.jenisBerkas)}</div>
+            </td>
+            <td class="py-3.5 px-4 align-top max-w-xs">
+              <div class="text-xs font-bold text-slate-900">${escapeHtml(d.namaKegiatan)}</div>
+              <div class="text-[11px] font-medium text-slate-600 break-all mt-0.5">${escapeHtml(d.namaFileCloud)}</div>
+              <div class="text-[11px] text-slate-400 truncate">Asli: ${escapeHtml(d.namaFileAsli)}</div>
+            </td>
+            <td class="py-3.5 px-4 align-top">
+              <span class="inline-block px-2 py-0.5 text-xs font-semibold border rounded-full ${badgeClass}">
+                ${escapeHtml(d.status)}
+              </span>
+              <div class="text-xs text-slate-500 mt-1 max-w-[200px]">${escapeHtml(d.catatanAdmin)}</div>
+            </td>
+            <td class="py-3.5 px-4 align-top text-right whitespace-nowrap space-x-1">
+              ${actionBtns}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ==========================================
+    // 3. UPLOAD, REVISI, & HAPUS DOKUMEN
+    // ==========================================
+    function handleUpload(e) {
+      e.preventDefault();
+      const file = document.getElementById('uploadFile').files[0];
+      if (!file) return showToast('Silakan pilih file terlebih dahulu.', 'error');
+      if (file.size > 5 * 1024 * 1024) return showToast('Ukuran file maksimal 5 MB.', 'error');
+
+      const btn = document.getElementById('btnUpload');
+      btn.disabled = true;
+      btn.textContent = 'Mengunggah ke Cloud Drive...';
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const payload = {
+          userId: currentUser.userId,
+          namaPengirim: currentUser.nama,
+          divisi: document.getElementById('uploadDivisi').value,
+          jenisBerkas: document.getElementById('uploadJenis').value,
+          namaKegiatan: document.getElementById('uploadKegiatan').value,
+          fileName: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          base64Data: evt.target.result.split(',')[1]
+        };
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            btn.disabled = false;
+            btn.textContent = 'Unggah ke Cloud';
+            if (res.success) {
+              showToast(res.message);
+              document.getElementById('uploadForm').reset();
+              document.getElementById('uploadDivisi').value = currentUser.divisi;
+              loadDocuments();
+            } else {
+              showToast(res.message, 'error');
+            }
+          })
+          .withFailureHandler(function(err) {
+            btn.disabled = false;
+            btn.textContent = 'Unggah ke Cloud';
+            showToast('Upload gagal: ' + err.message, 'error');
+          })
+          .uploadDocument(payload);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function openReviseModal(docId) {
+      const doc = allDocuments.find(d => d.docId === docId);
+      if (!doc) return;
+      document.getElementById('reviseForm').reset();
+      document.getElementById('reviseDocId').value = doc.docId;
+      document.getElementById('reviseDocInfo').textContent = `${doc.docId} • ${doc.namaKegiatan} (${doc.jenisBerkas})`;
+      document.getElementById('reviseAdminNote').textContent = doc.catatanAdmin;
+      openModal('reviseModal');
+    }
+
+    function handleReviseSubmit(e) {
+      e.preventDefault();
+      const file = document.getElementById('reviseFile').files[0];
+      if (!file) return showToast('Silakan pilih file perbaikan.', 'error');
+      if (file.size > 5 * 1024 * 1024) return showToast('Ukuran file maksimal 5 MB.', 'error');
+
+      const btn = document.getElementById('btnReviseSubmit');
+      btn.disabled = true;
+      btn.textContent = 'Mengganti File di Cloud...';
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const payload = {
+          docId: document.getElementById('reviseDocId').value,
+          userId: currentUser.userId,
+          namaPengirim: currentUser.nama,
+          fileName: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          base64Data: evt.target.result.split(',')[1]
+        };
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Revisi';
+            if (res.success) {
+              showToast(res.message);
+              closeModal('reviseModal');
+              loadDocuments();
+            } else {
+              showToast(res.message, 'error');
+            }
+          })
+          .withFailureHandler(function(err) {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Revisi';
+            showToast('Gagal mengunggah revisi: ' + err.message, 'error');
+          })
+          .reviseDocument(payload);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleDeleteDoc(docId) {
+      if (!confirm(`Yakin ingin menghapus dokumen ${docId}?\nFile di Google Drive juga akan dihapus permanen ke Trash.`)) return;
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success) {
+            showToast(res.message);
+            loadDocuments();
+          } else {
+            showToast(res.message, 'error');
+          }
+        })
+        .withFailureHandler(err => showToast('Gagal menghapus: ' + err.message, 'error'))
+        .deleteDocument(docId, currentUser.userId, currentUser.role, currentUser.username);
+    }
+
+    // ==========================================
+    // 4. VERIFIKASI ADMIN
+    // ==========================================
+    function openVerifyModal(docId) {
+      const doc = allDocuments.find(d => d.docId === docId);
+      if (!doc) return;
+      document.getElementById('modalDocId').value = doc.docId;
+      document.getElementById('modalDocName').textContent = `${doc.docId} — ${doc.namaKegiatan} (${doc.divisi})`;
+      document.getElementById('modalStatus').value = doc.status === 'Revisi' ? 'Revisi' : 'Approved';
+      document.getElementById('modalCatatan').value = doc.catatanAdmin === '-' ? '' : doc.catatanAdmin;
+      openModal('verifyModal');
+    }
+
+    function handleVerifySubmit(e) {
+      e.preventDefault();
+      const docId = document.getElementById('modalDocId').value;
+      const newStatus = document.getElementById('modalStatus').value;
+      const catatan = document.getElementById('modalCatatan').value;
+      const btn = document.getElementById('btnVerifySubmit');
+
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan & Mengirim Email...';
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          btn.textContent = 'Simpan & Kirim Email';
+          if (res.success) {
+            showToast(res.message);
+            closeModal('verifyModal');
+            loadDocuments();
+          } else {
+            showToast(res.message, 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Simpan & Kirim Email';
+          showToast('Gagal menyimpan: ' + err.message, 'error');
+        })
+        .updateDocumentStatus(docId, newStatus, catatan, currentUser.username);
+    }
+
+    // ==========================================
+    // 5. MANAJEMEN AKUN ORMAWA (KHUSUS ADMIN)
+    // ==========================================
+    function openAddUserModal() {
+      document.getElementById('addUserForm').reset();
+      openModal('addUserModal');
+    }
+
+    function handleCreateUser(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnAddUserSubmit');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan ke Cloud...';
+
+      const payload = {
+        nama: document.getElementById('newNama').value,
+        username: document.getElementById('newUsername').value,
+        password: document.getElementById('newPassword').value,
+        email: document.getElementById('newEmail').value,
+        divisi: document.getElementById('newDivisi').value,
+        role: document.getElementById('newRole').value,
+        adminUsername: currentUser.username
+      };
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          btn.textContent = 'Simpan Akun';
+          if (res.success) {
+            showToast(res.message);
+            closeModal('addUserModal');
+          } else {
+            showToast(res.message, 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Simpan Akun';
+          showToast('Gagal menyimpan: ' + err.message, 'error');
+        })
+        .createUserByAdmin(payload);
+    }
+
+    function openManageUsersModal() {
+      openModal('manageUsersModal');
+      loadUserList();
+    }
+
+    function loadUserList() {
+      const tbody = document.getElementById('userListBody');
+      tbody.innerHTML = '<tr><td colspan="4" class="py-6 text-center text-slate-400">Memuat daftar akun...</td></tr>';
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (!res.success) return showToast(res.message, 'error');
+          tbody.innerHTML = res.users.map(u => {
+            const isSelf = u.userId === currentUser.userId;
+            return `
+              <tr class="hover:bg-slate-50">
+                <td class="py-2.5 px-3">
+                  <div class="font-semibold text-slate-800">${escapeHtml(u.nama)}</div>
+                  <div class="text-[11px] font-mono text-slate-400">@${escapeHtml(u.username)} (${escapeHtml(u.userId)})</div>
+                </td>
+                <td class="py-2.5 px-3">
+                  <div class="font-medium text-slate-700">${escapeHtml(u.ormawa)}</div>
+                  <span class="inline-block mt-0.5 px-1.5 py-0.5 text-[10px] font-semibold rounded ${u.role === 'Admin' ? 'bg-slate-900 text-white' : 'bg-blue-50 text-blue-700'}">
+                    ${escapeHtml(u.role)}
+                  </span>
+                </td>
+                <td class="py-2.5 px-3 text-slate-600">${escapeHtml(u.email)}</td>
+                <td class="py-2.5 px-3 text-right">
+                  ${isSelf
+                    ? '<span class="text-[11px] text-slate-400 italic">Aktif</span>'
+                    : `<button onclick="handleDeleteUser('${escapeHtml(u.userId)}', '${escapeHtml(u.username)}')"
+                         class="px-2 py-1 text-[11px] font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 rounded cursor-pointer">
+                         Hapus
+                       </button>`}
+                </td>
+              </tr>
+            `;
+          }).join('');
+        })
+        .withFailureHandler(err => showToast('Gagal memuat akun: ' + err.message, 'error'))
+        .getAllUsers();
+    }
+
+    function handleDeleteUser(targetUserId, targetUsername) {
+      if (!confirm(`Yakin ingin menghapus akun @${targetUsername}?`)) return;
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success) {
+            showToast(res.message);
+            loadUserList();
+          } else {
+            showToast(res.message, 'error');
+          }
+        })
+        .withFailureHandler(err => showToast('Gagal menghapus akun: ' + err.message, 'error'))
+        .deleteUserByAdmin(targetUserId, currentUser.userId, currentUser.username);
+    }
+  </script>
+</body>
+</html>
